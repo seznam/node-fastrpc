@@ -43,21 +43,11 @@ describe('node-fastrpc', function() {
             assert.equal(typeof(frpcData), "object");
             assert.equal(frpcData.length, 105);
         });
-
-        it('frpc binary data to base64', function(){
-            var frpcBase64Data = frpc.btoa(frpc.serializeCall(method, params));
-            assert.equal(frpcBase64Data, frpcBinaryBase64Data);
-        });
     });
 
     describe('deserialize call', function(){
-        it('base64 to binary data', function(){
-            var frpcData = frpc.atob(frpcBinaryBase64Data);
-            assert.equal(frpcData.length, 105);
-        });
-
         it('binary data to json object', function(){
-            var data = frpc.parse(frpc.atob(frpcBinaryBase64Data));
+            var data = frpc.parse(new Buffer(frpcBinaryBase64Data, 'base64'));
             assert.equal(data.method, method);
 
             for (var i = 0; i < data.params.length; i++) {
