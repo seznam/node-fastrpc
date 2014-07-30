@@ -1,0 +1,26 @@
+{
+  "name": "fastrpc",
+  "version": "1.0.0",
+  "authors": [
+    "Ondřej Žára <ondrej.zara@gmail.com>",
+    "David Rus <david.rus@me.com>",
+    "Juraj Hájovský <juraj@hajovsky.sk>"
+  ],
+  "description": "Javascript implementation of FastRPC (de-)serialization",
+  "main": "frpc.js",
+  "keywords": [
+    "FastRPC",
+    "FRPC",
+    "RPC",
+    "API"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/seznam/node-fastrpc",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}

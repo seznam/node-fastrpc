@@ -1,0 +1,34 @@
+{
+  "name": "fastrpc",
+  "version": "1.0.0",
+  "description": "Javascript implementation of FastRPC (de-)serialization",
+  "main": "frpc.js",
+  "scripts": {
+    "test": "mocha --reporter spec test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/seznam/node-fastrpc.git"
+  },
+  "keywords": [
+    "FastRPC",
+    "FRPC",
+    "RPC",
+    "API"
+  ],
+  "author": "Seznam.cz, a.s.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/seznam/node-fastrpc/issues"
+  },
+  "homepage": "https://github.com/seznam/node-fastrpc",
+  "devDependencies": {
+    "mocha": "^1.20.0",
+    "chai": "^1.9.1"
+  },
+  "contributors": [
+    "Ondřej Žára <ondrej.zara@gmail.com>",
+    "David Rus <david.rus@me.com>",
+    "Juraj Hájovský <juraj@hajovsky.sk>"
+  ]
+}
