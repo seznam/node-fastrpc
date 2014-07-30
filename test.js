@@ -6,7 +6,8 @@ var frpc = require('./frpc');
 
 var method = "method";
 var params = [
-    2589983,                             // int
+    567188429000,                        // int
+    -567188429000,                       // negative int
     true,                                // bool
     false,                               // bool
     (100).toFixed(2),                    // double
@@ -16,15 +17,15 @@ var params = [
     7,                                   // positive
     -8,                                  // negative
     {                                    // struct
-        name:"David",
-        surname:"Rus",
-        date:new Date("1987/12/22 17:20:29")
+        name: "David",
+        surname: "Rus",
+        date: new Date("1987/12/22 17:20:29")
     },
-    [0,1,"text"],                        // array
+    [0, 1, "text"],                      // array
     null                                 // null
 ];
 
-var frpcBinaryBase64Data = "yhECAWgGbWV0aG9kOh+FJxEQIAYxMDAuMDAgBE5hbWUo/M2bziHqqGh5MDgyOAdACFADBG5hbWUgBURhdmlkB3N1cm5hbWUgA1J1cwRkYXRlKPzNm84h6qhoeTBYA0AAOAEgBHRleHRg";
+var frpcBinaryBase64Data = "yhECAWgGbWV0aG9kPMiYEA+ERMiYEA+EERAgBjEwMC4wMCAETmFtZSj8zZvOIeqoaHkwODI4B0AIUAMEbmFtZSAFRGF2aWQHc3VybmFtZSADUnVzBGRhdGUo/M2bziHqqGh5MFgDQAA4ASAEdGV4dGA=";
 
 describe('node-fastrpc', function() {
     describe('metadata', function() {
@@ -39,9 +40,9 @@ describe('node-fastrpc', function() {
 
     describe('serialize call', function(){
         it('object to binary data', function(){
-            var frpcData = frpc.serializeCall(method, params);
-            assert.equal(typeof(frpcData), "object");
-            assert.equal(frpcData.length, 105);
+            var frpcData = new Buffer(frpc.serializeCall(method, params));
+            var b64 = frpcData.toString('base64');
+            assert.equal(b64, frpcBinaryBase64Data);
         });
     });
 
@@ -51,7 +52,9 @@ describe('node-fastrpc', function() {
             assert.equal(data.method, method);
 
             for (var i = 0; i < data.params.length; i++) {
-                if (i == 5) {
+                if (i == 6) {
+                    console.log(data.params[i]);
+                    console.log(params[i]);
                     assert.equal(data.params[i].getTime(), params[i].getTime());
                 } else {
                     if (typeof(data.params[i]) == "object") {
