@@ -60,9 +60,9 @@
         switch (type) {
             case FRPC.TYPE_RESPONSE:
                 result = this._parseValue();
-                if (this._pointer < this._data.length) { 
+                if (this._pointer < this._data.length) {
                     this._data = [];
-                    throw new Error("Garbage after FRPC data"); 
+                    throw new Error("Garbage after FRPC data");
                 }
             break;
 
@@ -207,18 +207,18 @@
                 throw new Error("Unkown FRPC type " + type);
             break;
         }
-    }
+    };
 
     FRPC._append = function(arr1, arr2) {
         var len = arr2.length;
         for (var i=0;i<len;i++) { arr1.push(arr2[i]); }
-    }
+    };
 
     FRPC._parseMember = function(result) {
         var nameLength = this._getInt(1);
         var name = this._decodeUTF8(nameLength);
         result[name] = this._parseValue();
-    }
+    };
 
     /**
      * In little endian
@@ -321,12 +321,12 @@
         var exponent = (bytes[0] & 127) << 4;
         exponent += bytes[1] >> 4;
 
-        if (exponent == 0) { return Math.pow(-1, sign) * 0; }
+        if (exponent === 0) { return Math.pow(-1, sign) * 0; }
 
         var mantissa = 0;
         var byteIndex = 1;
         var bitIndex = 3;
-        var index = 1;
+        index = 1;
 
         do {
             var bitValue = (bytes[byteIndex] & (1 << bitIndex) ? 1 : 0);
@@ -558,23 +558,23 @@
         }
 
         var bits = [];
-        for (var i = fracBits; i>0; i--) { 
+        for (var i = fracBits; i>0; i--) {
             bits.push(fraction % 2 ? 1 : 0);
             fraction = Math.floor(fraction/2);
         }
 
-        for (var i = expBits; i>0; i--) { 
+        for (var i = expBits; i>0; i--) {
             bits.push(exponent % 2 ? 1 : 0);
             exponent = Math.floor(exponent/2);
         }
         bits.push(sign ? 1 : 0);
 
-        var num = 0;
+        num = 0;
         var index = 0;
         while (bits.length) {
             num += (1 << index) * bits.shift();
             index++;
-            if (index == 8) { 
+            if (index == 8) {
                 result.push(num);
                 num = 0;
                 index = 0;
@@ -594,7 +594,7 @@
     };
 
     /**
-     * @class Encodovani a decodovani FRPC stringu 
+     * @class Encodovani a decodovani FRPC stringu
      * @group jak-utils
      */
     FRPC.ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
@@ -648,7 +648,7 @@
             enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
             enc4 = chr3 & 63;
 
-            if (isNaN(chr2)) { 
+            if (isNaN(chr2)) {
                 enc3 = enc4 = 64;
             } else if (isNaN(chr3)) {
                 enc4 = 64;
