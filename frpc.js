@@ -1,87 +1,85 @@
 (function(module, win) {
-    var FRPC = {};
     /**
      * @class FRPC parser a serializator
-     * @group jak-utils
      */
-    FRPC.TYPE_MAGIC     = 25;
-    FRPC.TYPE_CALL      = 13;
-    FRPC.TYPE_RESPONSE  = 14;
-    FRPC.TYPE_FAULT     = 15;
+    var TYPE_MAGIC     = 25;
+    var TYPE_CALL      = 13;
+    var TYPE_RESPONSE  = 14;
+    var TYPE_FAULT     = 15;
 
-    FRPC.TYPE_INT       = 1;
-    FRPC.TYPE_BOOL      = 2;
-    FRPC.TYPE_DOUBLE    = 3;
-    FRPC.TYPE_STRING    = 4;
-    FRPC.TYPE_DATETIME  = 5;
-    FRPC.TYPE_BINARY    = 6;
-    FRPC.TYPE_INT8P     = 7;
-    FRPC.TYPE_INT8N     = 8;
-    FRPC.TYPE_STRUCT    = 10;
-    FRPC.TYPE_ARRAY     = 11;
-    FRPC.TYPE_NULL      = 12;
+    var TYPE_INT       = 1;
+    var TYPE_BOOL      = 2;
+    var TYPE_DOUBLE    = 3;
+    var TYPE_STRING    = 4;
+    var TYPE_DATETIME  = 5;
+    var TYPE_BINARY    = 6;
+    var TYPE_INT8P     = 7;
+    var TYPE_INT8N     = 8;
+    var TYPE_STRUCT    = 10;
+    var TYPE_ARRAY     = 11;
+    var TYPE_NULL      = 12;
 
-    FRPC._hints = null;
-    FRPC._path = [];
-    FRPC._data = [];
-    FRPC._pointer = 0;
+    var _hints = null;
+    var _path = [];
+    var _data = [];
+    var _pointer = 0;
 
     /**
      * @param {number[]} data
      * @returns {object}
      */
-    FRPC.parse = function(data) {
-        this._pointer = 0;
-        this._data = data;
+    var parse = function(data) {
+        _pointer = 0;
+        _data = data;
 
-        var magic1 = this._getByte();
-        var magic2 = this._getByte();
+        var magic1 = _getByte();
+        var magic2 = _getByte();
 
         if (magic1 != 0xCA || magic2 != 0x11) {
-            this._data = [];
+            _data = [];
             throw new Error("Missing FRPC magic");
         }
 
         /* zahodit zbytek hlavicky */
-        this._getByte();
-        this._getByte();
+        _getByte();
+        _getByte();
 
-        var first = this._getInt(1);
+        var first = _getInt(1);
         var type = first >> 3;
-        if (type == FRPC.TYPE_FAULT) {
-            var num = this._parseValue();
-            var msg = this._parseValue();
-            this._data = [];
+        if (type == TYPE_FAULT) {
+            var num = _parseValue();
+            var msg = _parseValue();
+            _data = [];
             throw new Error("FRPC/"+num+": "+msg);
         }
 
         var result = null;
 
         switch (type) {
-            case FRPC.TYPE_RESPONSE:
-                result = this._parseValue();
-                if (this._pointer < this._data.length) {
-                    this._data = [];
+            case TYPE_RESPONSE:
+                result = _parseValue();
+                if (_pointer < _data.length) {
+                    _data = [];
                     throw new Error("Garbage after FRPC data");
                 }
             break;
 
-            case FRPC.TYPE_CALL:
-                var nameLength = this._getInt(1);
-                var name = this._decodeUTF8(nameLength);
+            case TYPE_CALL:
+                var nameLength = _getInt(1);
+                var name = _decodeUTF8(nameLength);
                 var params = [];
-                while (this._pointer < this._data.length) { params.push(this._parseValue()); }
-                this._data = [];
+                while (_pointer < _data.length) { params.push(_parseValue()); }
+                _data = [];
                 return {method:name, params:params};
             break;
 
             default:
-                this._data = [];
-                throw new Error("Unsupported FRPC type "+type);
+                _data = [];
+                throw new Error("Unsupported TYPE "+type);
             break;
         }
 
-        this._data = [];
+        _data = [];
         return result;
     };
 
@@ -93,17 +91,17 @@
      * pak mnozina dvojic "cesta":"datovy typ"; cesta je teckami dodelena posloupnost
      * klicu a/nebo indexu v datech. Typ je "float" nebo "binary".
      */
-    FRPC.serializeCall = function(method, data, hints) {
-        var result = this.serialize(data, hints);
+    var serializeCall = function(method, data, hints) {
+        var result = serialize(data, hints);
 
         /* utrhnout hlavicku pole (dva bajty) */
         result.shift(); result.shift();
 
-        var encodedMethod = this._encodeUTF8(method);
+        var encodedMethod = _encodeUTF8(method);
         result.unshift.apply(result, encodedMethod);
         result.unshift(encodedMethod.length);
 
-        result.unshift(FRPC.TYPE_CALL << 3);
+        result.unshift(TYPE_CALL << 3);
         result.unshift(0xCA, 0x11, 0x02, 0x01);
 
         return result;
@@ -115,137 +113,137 @@
      * @param {object} hints hinty, ktera cisla maji byt floaty a kde jsou binarni data (klic = cesta, hodnota = "float"/"binary")
      * @returns {number[]}
      */
-    FRPC.serialize = function(data, hints) {
+    var serialize = function(data, hints) {
         var result = [];
-        this._path = [];
-        this._hints = hints;
+        _path = [];
+        _hints = hints;
 
-        this._serializeValue(result, data);
+        _serializeValue(result, data);
 
-        this._hints = null;
+        _hints = null;
         return result;
     };
 
-    FRPC._parseValue = function() {
+    var _parseValue = function() {
         /* pouzite optimalizace:
          * - zkracena cesta ke konstantam v ramci redukce tecek
          * - posun nejpouzivanejsich typu nahoru
          */
-        var first = this._getInt(1);
+        var first = _getInt(1);
         var type = first >> 3;
         var lengthBytes;
 
         switch (type) {
-            case FRPC.TYPE_STRING:
+            case TYPE_STRING:
                 var lengthBytes = (first & 7) + 1;
-                var length = this._getInt(lengthBytes);
-                return this._decodeUTF8(length);
+                var length = _getInt(lengthBytes);
+                return _decodeUTF8(length);
             break;
 
-            case FRPC.TYPE_STRUCT:
+            case TYPE_STRUCT:
                 var result = {};
                 var lengthBytes = (first & 7) + 1;
-                var members = this._getInt(lengthBytes);
-                while (members--) { this._parseMember(result); }
+                var members = _getInt(lengthBytes);
+                while (members--) { _parseMember(result); }
                 return result;
             break;
 
-            case FRPC.TYPE_ARRAY:
+            case TYPE_ARRAY:
                 var result = [];
                 var lengthBytes = (first & 7) + 1;
-                var members = this._getInt(lengthBytes);
-                while (members--) { result.push(this._parseValue()); }
+                var members = _getInt(lengthBytes);
+                while (members--) { result.push(_parseValue()); }
                 return result;
             break;
 
-            case FRPC.TYPE_BOOL:
+            case TYPE_BOOL:
                 return (first & 1 ? true : false);
             break;
 
-            case FRPC.TYPE_INT:
+            case TYPE_INT:
                 var length = first & 7;
                 var max = Math.pow(2, 8*length);
-                var result = this._getInt(length);
+                var result = _getInt(length);
                 if (result >= max/2) { result -= max; }
                 return result;
             break;
 
-            case FRPC.TYPE_DATETIME:
-                this._getByte();
-                var ts = this._getInt(4);
-                for (var i=0;i<5;i++) { this._getByte(); }
+            case TYPE_DATETIME:
+                _getByte();
+                var ts = _getInt(4);
+                for (var i=0;i<5;i++) { _getByte(); }
                 return new Date(1000*ts);
             break;
 
-            case FRPC.TYPE_DOUBLE:
-                return this._getDouble();
+            case TYPE_DOUBLE:
+                return _getDouble();
             break;
 
-            case FRPC.TYPE_BINARY:
+            case TYPE_BINARY:
                 var lengthBytes = (first & 7) + 1;
-                var length = this._getInt(lengthBytes);
+                var length = _getInt(lengthBytes);
                 var result = [];
-                while (length--) { result.push(this._getByte()); }
+                while (length--) { result.push(_getByte()); }
                 return result;
             break;
 
-            case FRPC.TYPE_INT8P:
+            case TYPE_INT8P:
                 var length = (first & 7) + 1;
-                return this._getInt(length);
+                return _getInt(length);
             break;
 
-            case FRPC.TYPE_INT8N:
+            case TYPE_INT8N:
                 var length = (first & 7) + 1;
-                return -this._getInt(length);
+                return -_getInt(length);
             break;
 
-            case FRPC.TYPE_NULL:
+            case TYPE_NULL:
                 return null;
             break;
 
             default:
-                throw new Error("Unkown FRPC type " + type);
+                throw new Error("Unkown TYPE " + type);
             break;
         }
     };
 
-    FRPC._append = function(arr1, arr2) {
+    var _append = function(arr1, arr2) {
         var len = arr2.length;
         for (var i=0;i<len;i++) { arr1.push(arr2[i]); }
     };
 
-    FRPC._parseMember = function(result) {
-        var nameLength = this._getInt(1);
-        var name = this._decodeUTF8(nameLength);
-        result[name] = this._parseValue();
+    var _parseMember = function(result) {
+        var nameLength = _getInt(1);
+        var name = _decodeUTF8(nameLength);
+        result[name] = _parseValue();
     };
 
     /**
      * In little endian
      */
-    FRPC._getInt = function(bytes) {
+    var _getInt = function(bytes) {
         var result = 0;
         var factor = 1;
 
         for (var i=0;i<bytes;i++) {
-            result += factor * this._getByte();
+            result += factor * _getByte();
             factor *= 256;
         }
 
         return result;
     };
 
-    FRPC._getByte = function() {
-        if ((this._pointer + 1) > this._data.length) { throw new Error("Cannot read byte from buffer"); }
-        return this._data[this._pointer++];
+    var _getByte = function() {
+        if ((_pointer + 1) > _data.length) { throw new Error("Cannot read byte from buffer"); }
+        return _data[_pointer++];
     };
 
-    FRPC._decodeUTF8 = function(length) {
+    var _decodeUTF8 = function(length) {
         /* pouzite optimalizace:
          * - pracujeme nad stringem namisto pole; FF i IE to kupodivu (!) maji rychlejsi
          * - while namisto for
-         * - cachovani fromCharcode, this._data i this._pointer
-         * - vyhozeni this._getByte
+         * - cachovani fromCharcode, _data i _pointer
+         * - vyhozeni _getByte
          */
         var remain = length;
         var result = "";
@@ -253,8 +251,8 @@
 
         var c = 0, c1 = 0, c2 = 0;
         var SfCC = String.fromCharCode;
-        var data = this._data;
-        var pointer = this._pointer;
+        var data = _data;
+        var pointer = _pointer;
 
         while (1) {
             remain--;
@@ -288,12 +286,12 @@
         }
 
         /* normalne je v tuto chvili remain = 0; pokud byla ale na vstupu chyba, mohlo klesnout pod nulu. vratime pointer na spravny konec stringu */
-        this._pointer = pointer + remain;
+        _pointer = pointer + remain;
 
         return result;
     };
 
-    FRPC._encodeUTF8 = function(str) {
+    var _encodeUTF8 = function(str) {
         var result = [];
         for (var i=0;i<str.length;i++) {
             var c = str.charCodeAt(i);
@@ -311,10 +309,10 @@
         return result;
     };
 
-    FRPC._getDouble = function() {
+    var _getDouble = function() {
         var bytes = [];
         var index = 8;
-        while (index--) { bytes[index] = this._getByte(); }
+        while (index--) { bytes[index] = _getByte(); }
 
         var sign = (bytes[0] & 0x80 ? 1 : 0);
 
@@ -352,45 +350,45 @@
         return Math.pow(-1, sign) * Math.pow(2, exponent) * (1+mantissa);
     };
 
-    FRPC._serializeValue = function(result, value) {
+    var _serializeValue = function(result, value) {
         if (value === null) {
-            result.push(FRPC.TYPE_NULL << 3);
+            result.push(TYPE_NULL << 3);
             return;
         }
 
         switch (typeof(value)) {
             case "string":
-                var strData = this._encodeUTF8(value);
-                var intData = this._encodeInt(strData.length);
+                var strData = _encodeUTF8(value);
+                var intData = _encodeInt(strData.length);
 
-                var first = FRPC.TYPE_STRING << 3;
+                var first = TYPE_STRING << 3;
                 first += (intData.length-1);
 
                 result.push(first);
-                this._append(result, intData);
-                this._append(result, strData);
+                _append(result, intData);
+                _append(result, strData);
             break;
 
             case "number":
-                if (this._getHint() == "float") { /* float */
-                    var first = FRPC.TYPE_DOUBLE << 3;
-                    var floatData = this._encodeDouble(value);
+                if (_getHint() == "float") { /* float */
+                    var first = TYPE_DOUBLE << 3;
+                    var floatData = _encodeDouble(value);
 
                     result.push(first);
-                    this._append(result, floatData);
+                    _append(result, floatData);
                 } else { /* int */
-                    var first = (value > 0 ? FRPC.TYPE_INT8P : FRPC.TYPE_INT8N);
+                    var first = (value > 0 ? TYPE_INT8P : TYPE_INT8N);
                     first = first << 3;
 
-                    var data = this._encodeInt(Math.abs(value));
+                    var data = _encodeInt(Math.abs(value));
                     first += (data.length-1);
 
                     result.push(first);
-                    this._append(result, data);
+                    _append(result, data);
                     /*
                     if (value < 0) { value = ~value; }
-                    var intData = this._encodeInt(value);
-                    var first = FRPC.TYPE_INT << 3;
+                    var intData = _encodeInt(value);
+                    var first = TYPE_INT << 3;
                     first += intData.length;
 
                     result.push(first);
@@ -400,18 +398,18 @@
             break;
 
             case "boolean":
-                var data = FRPC.TYPE_BOOL << 3;
+                var data = TYPE_BOOL << 3;
                 if (value) { data += 1; }
                 result.push(data);
             break;
 
             case "object":
                 if (value instanceof Date) {
-                    this._serializeDate(result, value);
+                    _serializeDate(result, value);
                 } else if (value instanceof Array) {
-                    this._serializeArray(result, value);
+                    _serializeArray(result, value);
                 } else {
-                    this._serializeStruct(result, value);
+                    _serializeStruct(result, value);
                 }
             break;
 
@@ -421,55 +419,55 @@
         }
     };
 
-    FRPC._serializeArray = function(result, data) {
-        if (this._getHint() == "binary") { /* binarni data */
-            var first = FRPC.TYPE_BINARY << 3;
-            var intData = this._encodeInt(data.length);
+    var _serializeArray = function(result, data) {
+        if (_getHint() == "binary") { /* binarni data */
+            var first = TYPE_BINARY << 3;
+            var intData = _encodeInt(data.length);
             first += (intData.length-1);
 
             result.push(first);
-            this._append(result, intData);
-            this._append(result, data);
+            _append(result, intData);
+            _append(result, data);
             return;
         }
 
-        var first = FRPC.TYPE_ARRAY << 3;
-        var intData = this._encodeInt(data.length);
+        var first = TYPE_ARRAY << 3;
+        var intData = _encodeInt(data.length);
         first += (intData.length-1);
 
         result.push(first);
-        this._append(result, intData);
+        _append(result, intData);
 
         for (var i=0;i<data.length;i++) {
-            this._path.push(i);
-            this._serializeValue(result, data[i]);
-            this._path.pop();
+            _path.push(i);
+            _serializeValue(result, data[i]);
+            _path.pop();
         }
     };
 
-    FRPC._serializeStruct = function(result, data) {
+    var _serializeStruct = function(result, data) {
         var numMembers = 0;
         for (var p in data) { numMembers++; }
 
-        var first = FRPC.TYPE_STRUCT << 3;
-        var intData = this._encodeInt(numMembers);
+        var first = TYPE_STRUCT << 3;
+        var intData = _encodeInt(numMembers);
         first += (intData.length-1);
 
         result.push(first);
-        this._append(result, intData);
+        _append(result, intData);
 
         for (var p in data) {
-            var strData = this._encodeUTF8(p);
+            var strData = _encodeUTF8(p);
             result.push(strData.length);
-            this._append(result, strData);
-            this._path.push(p);
-            this._serializeValue(result, data[p]);
-            this._path.pop();
+            _append(result, strData);
+            _path.push(p);
+            _serializeValue(result, data[p]);
+            _path.pop();
         }
     };
 
-    FRPC._serializeDate = function(result, date) {
-        result.push(FRPC.TYPE_DATETIME << 3);
+    var _serializeDate = function(result, date) {
+        result.push(TYPE_DATETIME << 3);
 
         /* 1 bajt, zona */
         var zone = date.getTimezoneOffset()/15; /* pocet ctvrthodin */
@@ -480,9 +478,9 @@
         var ts = Math.round(date.getTime() / 1000);
         if (ts < 0 || ts >= Math.pow(2, 31)) { ts = -1; }
         if (ts < 0) { ts += Math.pow(2, 32); } /* dvojkovy doplnek */
-        var tsData = this._encodeInt(ts);
+        var tsData = _encodeInt(ts);
         while (tsData.length < 4) { tsData.push(0); } /* do 4 bajtu */
-        this._append(result, tsData);
+        _append(result, tsData);
 
         /* 5 bajtu, zbyle haluze */
         var year = date.getFullYear()-1600;
@@ -505,7 +503,7 @@
     /**
      * Zakoduje KLADNE cele cislo, little endian
      */
-    FRPC._encodeInt = function(data) {
+    var _encodeInt = function(data) {
         if (!data) { return [0]; }
 
         var result = [];
@@ -523,7 +521,7 @@
     /**
      * Zakoduje IEEE-754 double
      */
-    FRPC._encodeDouble = function(num) {
+    var _encodeDouble = function(num) {
         var result = [];
 
         var expBits = 11;
@@ -587,36 +585,36 @@
      * Vrati aktualni hint, na zaklade "_path" a "_hints"
      * @returns {string || null}
      */
-    FRPC._getHint = function() {
-        if (!this._hints) { return null; }
-        if (typeof(this._hints) != "object") { return this._hints; } /* skalarni varianta */
-        return this._hints[this._path.join(".")] || null;
+    var _getHint = function() {
+        if (!_hints) { return null; }
+        if (typeof(_hints) != "object") { return _hints; } /* skalarni varianta */
+        return _hints[_path.join(".")] || null;
     };
 
     /**
-     * @class Encodovani a decodovani FRPC stringu
-     * @group jak-utils
+     * @class Encodovani a decodovani FastRPC stringu
      */
-    FRPC.ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    FRPC.INDEXED_ALPHABET = FRPC.ALPHABET.split('');
-    FRPC.ASSOCIATED_ALPHABET = {};
-    for(var i=0; i<FRPC.ALPHABET.length; i++) {
-        FRPC.ASSOCIATED_ALPHABET[FRPC.ALPHABET.charAt(i)] = i;
+    var ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    var INDEXED_ALPHABET = ALPHABET.split('');
+    var ASSOCIATED_ALPHABET = {};
+
+    for (var i=0; i<ALPHABET.length; i++) {
+        ASSOCIATED_ALPHABET[ALPHABET.charAt(i)] = i;
     }
 
     /**
-     * FRPC decode
+     * FastRPC decode
      */
-    FRPC.atob = function(data) {
+    var atob = function(data) {
         var output = [];
         var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
         var input = data.replace(/\s/g,"").split("");
 
-        for(var i=0, len=input.length;i<len;i+=4) {
-            enc1 = FRPC.ASSOCIATED_ALPHABET[input[i]];
-            enc2 = FRPC.ASSOCIATED_ALPHABET[input[i+1]];
-            enc3 = FRPC.ASSOCIATED_ALPHABET[input[i+2]];
-            enc4 = FRPC.ASSOCIATED_ALPHABET[input[i+3]];
+        for (var i=0, len=input.length;i<len;i+=4) {
+            enc1 = ASSOCIATED_ALPHABET[input[i]];
+            enc2 = ASSOCIATED_ALPHABET[input[i+1]];
+            enc3 = ASSOCIATED_ALPHABET[input[i+2]];
+            enc4 = ASSOCIATED_ALPHABET[input[i+3]];
 
             chr1 = (enc1 << 2) | (enc2 >> 4);
             chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
@@ -630,9 +628,9 @@
     };
 
     /**
-     * FRPC encode
+     * FastRPC encode
      */
-    FRPC.btoa = function(data) {
+    var btoa = function(data) {
         var output = [];
 
         var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
@@ -654,19 +652,27 @@
                 enc4 = 64;
             }
 
-            output.push(FRPC.INDEXED_ALPHABET[enc1]);
-            output.push(FRPC.INDEXED_ALPHABET[enc2]);
-            output.push(FRPC.INDEXED_ALPHABET[enc3]);
-            output.push(FRPC.INDEXED_ALPHABET[enc4]);
+            output.push(INDEXED_ALPHABET[enc1]);
+            output.push(INDEXED_ALPHABET[enc2]);
+            output.push(INDEXED_ALPHABET[enc3]);
+            output.push(INDEXED_ALPHABET[enc4]);
 
         } while (i < len);
 
         return output.join("");
     };
 
-    if(module){
-        module.exports = FRPC;
-    }else if(win){
-        win.FRPC = FRPC;
+    var PublicExports = {
+        serializeCall: serializeCall,
+        serialize: serialize,
+        parse: parse,
+        atob: atob,
+        btoa: btoa
+    };
+
+    if (module) {
+        module.exports = PublicExports;
+    } else if (win) {
+        win.FastRPC = PublicExports;
     }
 })(typeof(module) == "undefined" ? null : module, typeof(window) == "undefined" ? null : window);

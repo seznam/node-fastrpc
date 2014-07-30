@@ -2,7 +2,7 @@ var assert = require('assert');
 var expect = require('chai').expect;
 var nodePkg = require('./package.json');
 var bowerPkg = require('./bower.json');
-var frpc = require('./frpc.js');
+var frpc = require('./frpc');
 
 var method = "method";
 var params = [
