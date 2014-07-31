@@ -4,28 +4,51 @@ var nodePkg = require('./package.json');
 var bowerPkg = require('./bower.json');
 var frpc = require('./frpc');
 
+var testDate = "1987-12-22T16:20:29.000Z";
 var method = "method";
 var params = [
-    567188429000,                        // int
-    -567188429000,                       // negative int
+    123,                                 // int
     true,                                // bool
     false,                               // bool
     (100).toFixed(2),                    // double
     "Name",                              // string
-    new Date("1987/12/22 17:20:29"),     // datetime
+    new Date(testDate),                  // datetime
     101 >> 1,                            // binary
-    7,                                   // positive
-    -8,                                  // negative
+    567188429000,                        // positive
+    -567188429000,                       // negative
     {                                    // struct
         name: "David",
         surname: "Rus",
-        date: new Date("1987/12/22 17:20:29")
+        date: new Date(testDate)
     },
     [0, 1, "text"],                      // array
     null                                 // null
 ];
 
-var frpcBinaryBase64Data = "yhECAWgGbWV0aG9kPMiYEA+ERMiYEA+EERAgBjEwMC4wMCAETmFtZSj8zZvOIeqoaHkwODI4B0AIUAMEbmFtZSAFRGF2aWQHc3VybmFtZSADUnVzBGRhdGUo/M2bziHqqGh5MFgDQAA4ASAEdGV4dGA=";
+var testDataBase64 = "yhECAWgGbWV0aG9kOHsRECAGMTAwLjAwIAROYW1lKADNm84h6ihoeTA4MjzImBAPhETImBAPhFADBG5hbWUgBURhdmlkB3N1cm5hbWUgA1J1cwRkYXRlKADNm84h6ihoeTBYA0AAOAEgBHRleHRg";
+var testDataBuffer = new Buffer(testDataBase64, 'base64');
+
+before(function() {
+    // Force UTC as a local timezone
+
+    Date.prototype.real_getTimezoneOffset = Date.prototype.getTimezoneOffset;
+    Date.prototype.real_getHours = Date.prototype.getHours;
+    Date.prototype.real_getMinutes = Date.prototype.getMinutes;
+
+    Date.prototype.getHours = function() {
+        var offset = parseInt(this.real_getTimezoneOffset() / 60);
+        return this.real_getHours() + offset;
+    };
+
+    Date.prototype.getMinutes = function() {
+        var offset = this.real_getTimezoneOffset() % 60;
+        return this.real_getMinutes() + offset;
+    };
+
+    Date.prototype.getTimezoneOffset = function() {
+        return 0;
+    };
+});
 
 describe('node-fastrpc', function() {
     describe('metadata', function() {
@@ -38,32 +61,17 @@ describe('node-fastrpc', function() {
         });
     });
 
-    describe('serialize call', function(){
-        it('object to binary data', function(){
-            var frpcData = new Buffer(frpc.serializeCall(method, params));
-            var b64 = frpcData.toString('base64');
-            assert.equal(b64, frpcBinaryBase64Data);
+    describe('methods', function(){
+        it('serializeCall()', function(){
+            var bin = frpc.serializeCall(method, params);
+            var data = new Buffer(bin);
+            expect(data).to.deep.equal(testDataBuffer);
         });
-    });
 
-    describe('deserialize call', function(){
-        it('binary data to json object', function(){
-            var data = frpc.parse(new Buffer(frpcBinaryBase64Data, 'base64'));
-            assert.equal(data.method, method);
-
-            for (var i = 0; i < data.params.length; i++) {
-                if (i == 6) {
-                    console.log(data.params[i]);
-                    console.log(params[i]);
-                    assert.equal(data.params[i].getTime(), params[i].getTime());
-                } else {
-                    if (typeof(data.params[i]) == "object") {
-                        assert.equal(JSON.stringify(data.params[i]), JSON.stringify(params[i]));
-                    } else {
-                        assert.equal(data.params[i], params[i]);
-                    }
-                }
-            }
+        it('parse()', function(){
+            var data = frpc.parse(testDataBuffer);
+            expect(data.method).to.be.equal(method);
+            expect(JSON.stringify(data.params)).to.deep.equal(JSON.stringify(params));
         });
     });
 });
