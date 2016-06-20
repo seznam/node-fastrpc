@@ -377,7 +377,7 @@
                     result.push(first);
                     _append(result, floatData);
                 } else { /* int */
-                    var first = (value > 0 ? TYPE_INT8P : TYPE_INT8N);
+                    var first = (value >= 0 ? TYPE_INT8P : TYPE_INT8N);
                     first = first << 3;
 
                     var data = _encodeInt(Math.abs(value));
