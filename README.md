@@ -2,7 +2,8 @@ node-fastrpc
 ============
 [![Build Status](https://travis-ci.org/seznam/node-fastrpc.svg?branch=master)](https://travis-ci.org/seznam/node-fastrpc)
 
-Javascript implementation of FastRPC (de-)serialization
+Javascript implementation of [FastRPC](https://github.com/seznam/fastrpc)
+(de-)serialization.
 
 # Installation
 
