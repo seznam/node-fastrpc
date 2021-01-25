@@ -7,15 +7,18 @@ export type RpcData =
     readonly RpcData[] |
     {readonly [property: string]: RpcData}
 
-export type RpcDataTypeHint =
-    null |
+type RpcScalarDataTypeHint =
     'binary' |
     'boolean' |
     'float' |
     'int' |
     'string' |
-    'datetime' |
-    {readonly [propertyPath: string]: RpcDataTypeHint}
+    'datetime'
+
+export type RpcDataTypeHint =
+    null |
+    RpcScalarDataTypeHint |
+    {readonly [propertyPath: string]: RpcScalarDataTypeHint}
 
 function serializeCall(procedure: string, args: readonly RpcData[], dataTypeHint: RpcDataTypeHint): number[]
 function serialize(data: RpcData, typeHint: RpcDataTypeHint): number[]
