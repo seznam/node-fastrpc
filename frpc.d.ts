@@ -20,12 +20,6 @@ export type RpcDataTypeHint =
     RpcScalarDataTypeHint |
     {readonly [propertyPath: string]: RpcScalarDataTypeHint}
 
-function serializeCall(procedure: string, args: readonly RpcData[], dataTypeHint: RpcDataTypeHint): number[]
-function serialize(data: RpcData, typeHint: RpcDataTypeHint): number[]
-function parse(data: readonly number[]): RpcData | {method: string, params: RpcData[]}
-
-export = {
-    serializeCall,
-    serialize,
-    parse,
-};
+export function serializeCall(procedure: string, args: readonly RpcData[], dataTypeHint: RpcDataTypeHint): number[]
+export function serialize(data: RpcData, typeHint: RpcDataTypeHint): number[]
+export function parse(data: readonly number[]): RpcData | {method: string, params: RpcData[]}
