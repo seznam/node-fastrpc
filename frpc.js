@@ -26,6 +26,7 @@
         this.number = number;
     };
 
+    var _arrayBuffers = false;
     var _hints = null;
     var _path = [];
     var _data = [];
@@ -33,9 +34,11 @@
 
     /**
      * @param {number[]} data
+     * @param {{ arrayBuffers?: boolean }} [options]
      * @returns {object}
      */
-    var parse = function(data) {
+    var parse = function(data, options) {
+        _arrayBuffers = options && options.arrayBuffers || false;
         _pointer = 0;
         _data = data;
 
@@ -91,8 +94,9 @@
     };
 
     /**
-     * @deprecated Do not treat FastRPC type `double` as native JS type `number` with hint. Treat FastRPC type `double`
-     * as non-native JS class `Double` instead.
+     * @deprecated Do not treat FastRPC type `binary`, type `double` respectively, as native JS class `Array`,
+     * type `number` respectively, with hint. Treat FastRPC type `binary`, type `double` respectively, as native JS
+     * class `ArrayBuffer`, non-native JS class `Double` respectively, instead.
      * @param {string} method
      * @param {array} data
      * @param {object || string} hints Napoveda datovych typu:
@@ -102,10 +106,6 @@
      *//**
      * @param {string} method
      * @param {array} data
-     * @param {object || string} hints Napoveda datovych typu:
-     * pokud string, pak typ (skalarni) hodnoty "data". Pokud objekt,
-     * pak mnozina dvojic "cesta":"datovy typ"; cesta je teckami dodelena posloupnost
-     * klicu a/nebo indexu v datech. Typ je "binary".
      * @returns {number[]}
      */
     var serializeCall = function(method, data, hints) {
@@ -125,14 +125,14 @@
     };
 
     /**
-     * @deprecated Do not treat FastRPC type `double` as native JS type `number` with hint. Treat FastRPC type `double`
-     * as non-native JS class `Double` instead.
+     * @deprecated Do not treat FastRPC type `binary`, type `double` respectively, as native JS class `Array`,
+     * type `number` respectively, with hint. Treat FastRPC type `binary`, type `double` respectively, as native JS
+     * class `ArrayBuffer`, non-native JS class `Double` respectively, instead.
      * @param {?} data
      * @param {object} hints hinty, ktera cisla maji byt floaty a kde jsou binarni data (klic = cesta, hodnota = "float"/"binary")
      * @returns {number[]}
      *//**
      * @param {?} data
-     * @param {object} hints hinty, ktera cisla maji byt floaty a kde jsou binarni data (klic = cesta, hodnota = "binary")
      * @returns {number[]}
      */
     var serialize = function(data, hints) {
@@ -204,6 +204,11 @@
             case TYPE_BINARY:
                 var lengthBytes = (first & 7) + 1;
                 var length = _getInt(lengthBytes);
+                if (_arrayBuffers) {
+                    var typedArray = new Uint8Array(length);
+                    for (var i=0;i<length;i++) { typedArray[i] = _getByte(); }
+                    return typedArray.buffer;
+                }
                 var result = [];
                 while (length--) { result.push(_getByte()); }
                 return result;
@@ -422,7 +427,9 @@
             break;
 
             case "object":
-                if (value instanceof Date) {
+                if (value instanceof ArrayBuffer) {
+                    _serializeAsBinary(result, value);
+                } else if (value instanceof Date) {
                     _serializeDate(result, value);
                 } else if (value instanceof Array) {
                     _serializeArray(result, value);
@@ -439,15 +446,20 @@
         }
     };
 
+    var _serializeAsBinary = function(result, data) {
+        var isArrayBuffer = data instanceof ArrayBuffer;
+        var first = TYPE_BINARY << 3;
+        var intData = _encodeInt(isArrayBuffer ? data.byteLength : data.length);
+        first += (intData.length-1);
+
+        result.push(first);
+        _append(result, intData);
+        _append(result, isArrayBuffer ? new Uint8Array(data) : data);
+    };
+
     var _serializeArray = function(result, data) {
         if (_getHint() == "binary") { /* binarni data */
-            var first = TYPE_BINARY << 3;
-            var intData = _encodeInt(data.length);
-            first += (intData.length-1);
-
-            result.push(first);
-            _append(result, intData);
-            _append(result, data);
+            _serializeAsBinary(result, data);
             return;
         }
 
