@@ -10,10 +10,10 @@ var params = [
     123,                                 // int
     true,                                // bool
     false,                               // bool
-    (100).toFixed(2),                    // double
+    100,                                 // double
     "Name",                              // string
     new Date(testDate),                  // datetime
-    101 >> 1,                            // binary
+    [69, 96],                            // binary
     567188429000,                        // positive
     -567188429000,                       // negative
     {                                    // struct
@@ -25,7 +25,7 @@ var params = [
     null                                 // null
 ];
 
-var testDataBase64 = "yhECAWgGbWV0aG9kOHsRECAGMTAwLjAwIAROYW1lKADNm84h6ihoeTA4MjzImBAPhETImBAPhFADBG5hbWUgBURhdmlkB3N1cm5hbWUgA1J1cwRkYXRlKADNm84h6ihoeTBYA0AAOAEgBHRleHRg";
+var testDataBase64 = "yhECAWgGbWV0aG9kOHsREBgAAAAAAABZQCAETmFtZSj8zZvOIeqoaHkwMAJFYDzImBAPhETImBAPhFADBG5hbWUgBURhdmlkB3N1cm5hbWUgA1J1cwRkYXRlKPzNm84h6qhoeTBYAzgAOAEgBHRleHRg";
 var testDataBuffer = new Buffer(testDataBase64, 'base64');
 
 before(function() {
@@ -61,14 +61,14 @@ describe('node-fastrpc', function() {
         });
     });
 
-    describe('methods', function(){
-        it('serializeCall()', function(){
-            var bin = frpc.serializeCall(method, params);
+    describe('methods', function() {
+        it('serializeCall()', function() {
+            var bin = frpc.serializeCall(method, params, {'3':'float', '6':'binary'});
             var data = new Buffer(bin);
             expect(data).to.deep.equal(testDataBuffer);
         });
 
-        it('parse()', function(){
+        it('parse()', function() {
             var data = frpc.parse(testDataBuffer);
             expect(data.method).to.be.equal(method);
             expect(JSON.stringify(data.params)).to.deep.equal(JSON.stringify(params));
