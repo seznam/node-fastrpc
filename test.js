@@ -11,6 +11,7 @@ var params = [
     true,                                // bool
     false,                               // bool
     100,                                 // double
+    new frpc.Double(100),                // double
     "Name",                              // string
     new Date(testDate),                  // datetime
     [69, 96],                            // binary
@@ -25,8 +26,16 @@ var params = [
     null                                 // null
 ];
 
-var testDataBase64 = "yhECAWgGbWV0aG9kOHsREBgAAAAAAABZQCAETmFtZSj8zZvOIeqoaHkwMAJFYDzImBAPhETImBAPhFADBG5hbWUgBURhdmlkB3N1cm5hbWUgA1J1cwRkYXRlKPzNm84h6qhoeTBYAzgAOAEgBHRleHRg";
+var testDataBase64 = "yhECAWgGbWV0aG9kOHsREBgAAAAAAABZQBgAAAAAAABZQCAETmFtZSj8zZvOIeqoaHkwWAI4RThgPMiYEA+ERMiYEA+EUAMEbmFtZSAFRGF2aWQHc3VybmFtZSADUnVzBGRhdGUo/M2bziHqqGh5MFgDOAA4ASAEdGV4dGA=";
 var testDataBuffer = new Buffer(testDataBase64, 'base64');
+
+var replacer = function(_key, value) {
+    if (value instanceof frpc.Double) {
+        return value.number;
+    }
+
+    return value;
+};
 
 before(function() {
     // Force UTC as a local timezone
@@ -63,7 +72,7 @@ describe('node-fastrpc', function() {
 
     describe('methods', function() {
         it('serializeCall()', function() {
-            var bin = frpc.serializeCall(method, params, {'3':'float', '6':'binary'});
+            var bin = frpc.serializeCall(method, params, {'3':'float', '7':'binary'});
             var data = new Buffer(bin);
             expect(data).to.deep.equal(testDataBuffer);
         });
@@ -71,7 +80,7 @@ describe('node-fastrpc', function() {
         it('parse()', function() {
             var data = frpc.parse(testDataBuffer);
             expect(data.method).to.be.equal(method);
-            expect(JSON.stringify(data.params)).to.deep.equal(JSON.stringify(params));
+            expect(JSON.stringify(data.params, replacer)).to.deep.equal(JSON.stringify(params, replacer));
         });
     });
 });

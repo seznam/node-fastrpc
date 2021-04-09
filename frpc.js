@@ -19,6 +19,13 @@
     var TYPE_ARRAY     = 11;
     var TYPE_NULL      = 12;
 
+    /**
+     * @param {number} number
+     */
+    var Double = function(number) {
+        this.number = number;
+    };
+
     var _hints = null;
     var _path = [];
     var _data = [];
@@ -84,12 +91,22 @@
     };
 
     /**
+     * @deprecated Do not treat FastRPC type `double` as native JS type `number` with hint. Treat FastRPC type `double`
+     * as non-native JS class `Double` instead.
      * @param {string} method
      * @param {array} data
      * @param {object || string} hints Napoveda datovych typu:
      * pokud string, pak typ (skalarni) hodnoty "data". Pokud objekt,
      * pak mnozina dvojic "cesta":"datovy typ"; cesta je teckami dodelena posloupnost
      * klicu a/nebo indexu v datech. Typ je "float" nebo "binary".
+     *//**
+     * @param {string} method
+     * @param {array} data
+     * @param {object || string} hints Napoveda datovych typu:
+     * pokud string, pak typ (skalarni) hodnoty "data". Pokud objekt,
+     * pak mnozina dvojic "cesta":"datovy typ"; cesta je teckami dodelena posloupnost
+     * klicu a/nebo indexu v datech. Typ je "binary".
+     * @returns {number[]}
      */
     var serializeCall = function(method, data, hints) {
         var result = serialize(data, hints);
@@ -108,9 +125,14 @@
     };
 
     /**
-     * @param {string} method
+     * @deprecated Do not treat FastRPC type `double` as native JS type `number` with hint. Treat FastRPC type `double`
+     * as non-native JS class `Double` instead.
      * @param {?} data
      * @param {object} hints hinty, ktera cisla maji byt floaty a kde jsou binarni data (klic = cesta, hodnota = "float"/"binary")
+     * @returns {number[]}
+     *//**
+     * @param {?} data
+     * @param {object} hints hinty, ktera cisla maji byt floaty a kde jsou binarni data (klic = cesta, hodnota = "binary")
      * @returns {number[]}
      */
     var serialize = function(data, hints) {
@@ -371,11 +393,7 @@
 
             case "number":
                 if (_getHint() == "float") { /* float */
-                    var first = TYPE_DOUBLE << 3;
-                    var floatData = _encodeDouble(value);
-
-                    result.push(first);
-                    _append(result, floatData);
+                    _serializeAsDouble(result, value);
                 } else { /* int */
                     var first = (value >= 0 ? TYPE_INT8P : TYPE_INT8N);
                     first = first << 3;
@@ -408,6 +426,8 @@
                     _serializeDate(result, value);
                 } else if (value instanceof Array) {
                     _serializeArray(result, value);
+                } else if (value instanceof Double) {
+                    _serializeAsDouble(result, value.number);
                 } else {
                     _serializeStruct(result, value);
                 }
@@ -498,6 +518,14 @@
         result.push( ((hours & 0x1e) >> 1) | ((day & 0x0f) << 4) );
         result.push( ((day & 0x1f) >> 4) | ((month & 0x0f) << 1) | ((year & 0x07) << 5) );
         result.push( (year & 0x07f8) >> 3 );
+    };
+
+    var _serializeAsDouble = function(result, number) {
+        var first = TYPE_DOUBLE << 3;
+        var floatData = _encodeDouble(number);
+
+        result.push(first);
+        _append(result, floatData);
     };
 
     /**
@@ -592,6 +620,7 @@
     };
 
     var PublicExports = {
+        Double: Double,
         serializeCall: serializeCall,
         serialize: serialize,
         parse: parse
