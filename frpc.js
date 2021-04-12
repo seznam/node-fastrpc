@@ -19,6 +19,14 @@
     var TYPE_ARRAY     = 11;
     var TYPE_NULL      = 12;
 
+    /**
+     * @param {number} number
+     */
+    var Double = function(number) {
+        this.number = number;
+    };
+
+    var _arrayBuffers = false;
     var _hints = null;
     var _path = [];
     var _data = [];
@@ -26,9 +34,11 @@
 
     /**
      * @param {number[]} data
+     * @param {{ arrayBuffers?: boolean }} [options]
      * @returns {object}
      */
-    var parse = function(data) {
+    var parse = function(data, options) {
+        _arrayBuffers = options && options.arrayBuffers || false;
         _pointer = 0;
         _data = data;
 
@@ -84,12 +94,19 @@
     };
 
     /**
+     * @deprecated Do not treat FastRPC type `binary`, type `double` respectively, as native JS class `Array`,
+     * type `number` respectively, with hint. Treat FastRPC type `binary`, type `double` respectively, as native JS
+     * class `ArrayBuffer`, non-native JS class `Double` respectively, instead.
      * @param {string} method
      * @param {array} data
      * @param {object || string} hints Napoveda datovych typu:
      * pokud string, pak typ (skalarni) hodnoty "data". Pokud objekt,
      * pak mnozina dvojic "cesta":"datovy typ"; cesta je teckami dodelena posloupnost
      * klicu a/nebo indexu v datech. Typ je "float" nebo "binary".
+     *//**
+     * @param {string} method
+     * @param {array} data
+     * @returns {number[]}
      */
     var serializeCall = function(method, data, hints) {
         var result = serialize(data, hints);
@@ -108,9 +125,14 @@
     };
 
     /**
-     * @param {string} method
+     * @deprecated Do not treat FastRPC type `binary`, type `double` respectively, as native JS class `Array`,
+     * type `number` respectively, with hint. Treat FastRPC type `binary`, type `double` respectively, as native JS
+     * class `ArrayBuffer`, non-native JS class `Double` respectively, instead.
      * @param {?} data
      * @param {object} hints hinty, ktera cisla maji byt floaty a kde jsou binarni data (klic = cesta, hodnota = "float"/"binary")
+     * @returns {number[]}
+     *//**
+     * @param {?} data
      * @returns {number[]}
      */
     var serialize = function(data, hints) {
@@ -182,6 +204,11 @@
             case TYPE_BINARY:
                 var lengthBytes = (first & 7) + 1;
                 var length = _getInt(lengthBytes);
+                if (_arrayBuffers) {
+                    var typedArray = new Uint8Array(length);
+                    for (var i=0;i<length;i++) { typedArray[i] = _getByte(); }
+                    return typedArray.buffer;
+                }
                 var result = [];
                 while (length--) { result.push(_getByte()); }
                 return result;
@@ -371,11 +398,7 @@
 
             case "number":
                 if (_getHint() == "float") { /* float */
-                    var first = TYPE_DOUBLE << 3;
-                    var floatData = _encodeDouble(value);
-
-                    result.push(first);
-                    _append(result, floatData);
+                    _serializeAsDouble(result, value);
                 } else { /* int */
                     var first = (value >= 0 ? TYPE_INT8P : TYPE_INT8N);
                     first = first << 3;
@@ -404,10 +427,14 @@
             break;
 
             case "object":
-                if (value instanceof Date) {
+                if (value instanceof ArrayBuffer) {
+                    _serializeAsBinary(result, value);
+                } else if (value instanceof Date) {
                     _serializeDate(result, value);
                 } else if (value instanceof Array) {
                     _serializeArray(result, value);
+                } else if (value instanceof Double) {
+                    _serializeAsDouble(result, value.number);
                 } else {
                     _serializeStruct(result, value);
                 }
@@ -419,15 +446,20 @@
         }
     };
 
+    var _serializeAsBinary = function(result, data) {
+        var isArrayBuffer = data instanceof ArrayBuffer;
+        var first = TYPE_BINARY << 3;
+        var intData = _encodeInt(isArrayBuffer ? data.byteLength : data.length);
+        first += (intData.length-1);
+
+        result.push(first);
+        _append(result, intData);
+        _append(result, isArrayBuffer ? new Uint8Array(data) : data);
+    };
+
     var _serializeArray = function(result, data) {
         if (_getHint() == "binary") { /* binarni data */
-            var first = TYPE_BINARY << 3;
-            var intData = _encodeInt(data.length);
-            first += (intData.length-1);
-
-            result.push(first);
-            _append(result, intData);
-            _append(result, data);
+            _serializeAsBinary(result, data);
             return;
         }
 
@@ -498,6 +530,14 @@
         result.push( ((hours & 0x1e) >> 1) | ((day & 0x0f) << 4) );
         result.push( ((day & 0x1f) >> 4) | ((month & 0x0f) << 1) | ((year & 0x07) << 5) );
         result.push( (year & 0x07f8) >> 3 );
+    };
+
+    var _serializeAsDouble = function(result, number) {
+        var first = TYPE_DOUBLE << 3;
+        var floatData = _encodeDouble(number);
+
+        result.push(first);
+        _append(result, floatData);
     };
 
     /**
@@ -592,6 +632,7 @@
     };
 
     var PublicExports = {
+        Double: Double,
         serializeCall: serializeCall,
         serialize: serialize,
         parse: parse
